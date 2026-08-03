@@ -1,0 +1,15 @@
+{
+  "name": "hermes-tui-web",
+  "version": "1.0.0",
+  "description": "Host Hermes TUI as a mobile-friendly web page via Tailscale",
+  "main": "hermes-tui-server6.js",
+  "scripts": {
+    "start": "node hermes-tui-server6.js"
+  },
+  "dependencies": {
+    "node-pty": "^0.11.0",
+    "ws": "^8.18.0",
+    "xterm": "^5.4.0",
+    "xterm-addon-fit": "^0.10.0"
+  }
+}
