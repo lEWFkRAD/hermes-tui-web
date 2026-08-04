@@ -22,6 +22,8 @@ The frontend and PTY backend listen only on loopback. Tailscale Serve is the sol
 - WebSocket text frames stay text frames; ArrayBuffer and Blob payloads are also decoded safely.
 - The terminal assets are embedded in the response, so the phone does not need a CDN.
 - Portrait phones use a conservative font size that avoids ambiguous-width Unicode banner drift.
+- The Visual Viewport API refits the terminal while the iPhone keyboard animates, scrolls to the prompt, and keeps the hidden input anchor inside the visible area.
+- Apple standalone web-app metadata and a manifest allow a Home Screen launch without Safari's browser chrome.
 
 ## Prerequisites
 
@@ -79,6 +81,18 @@ On SHATNER, the current URL is:
 https://shatner.tail3bf242.ts.net/s/hermes-tui
 ```
 
+## iPhone full-screen mode
+
+Safari cannot be forced into fullscreen from page JavaScript. Install the terminal as a Home Screen web app instead:
+
+1. Open the URL in Safari.
+2. Tap **More** or **Share**.
+3. Tap **Add to Home Screen**.
+4. Turn on **Open as Web App**.
+5. Tap **Add**, then launch **Hermes TUI** from the new Home Screen icon.
+
+The installed web app uses standalone display mode and removes Safari's address and tab bars. The iPhone status area remains under iOS control.
+
 ## Persistence
 
 Create a scheduled task named `Hermes_Hosted_TUI` that runs `Start-Hermes-HostedTui.ps1` at boot and user logon. Configure it with `IgnoreNew`, no execution time limit, and restart-on-failure. The production task uses 999 one-minute restart attempts.
@@ -102,6 +116,8 @@ curl.exe -I https://shatner.tail3bf242.ts.net/s/hermes-tui
 ```
 
 For mobile acceptance, test a portrait viewport near 390x844. The initial ConPTY width should match the browser (about 61 columns with the default phone font), and no 120-column `hermes-pty.js` process should exist.
+
+For keyboard acceptance, reduce the visible viewport height while the terminal input is focused. `--app-height`, the terminal container, the prompt, and xterm's helper textarea should all remain within the visual viewport.
 
 For recovery acceptance, stop webtty and the frontend separately. Each listener should return within approximately 15–30 seconds without manually rerunning the task.
 
