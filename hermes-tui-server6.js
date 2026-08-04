@@ -3,13 +3,25 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocket } = require('ws');
 
-const PORT = 9092;
+const PORT = Number(process.env.PORT || 9092);
 const HERMES_HOME = path.join('C:', 'Users', 'Administrator', 'AppData', 'Local', 'hermes');
-const STATIC_DIR = path.join(HERMES_HOME, 'static');
 
-// Read static files at startup
-const XTERM_JS = fs.readFileSync(path.join(STATIC_DIR, 'xterm.min.js'), 'utf8');
-const XTERM_FIT_JS = fs.readFileSync(path.join(STATIC_DIR, 'xterm-addon-fit.min.js'), 'utf8');
+function readAsset(fileName, packagePath) {
+    const candidates = [
+        path.join(__dirname, 'static', fileName),
+        path.join(__dirname, 'node_modules', packagePath),
+        path.join(HERMES_HOME, 'static', fileName)
+    ];
+    const assetPath = candidates.find(candidate => fs.existsSync(candidate));
+    if (!assetPath) {
+        throw new Error(`Missing ${fileName}; run npm install or provide static/${fileName}`);
+    }
+    return fs.readFileSync(assetPath, 'utf8');
+}
+
+// Embed terminal assets at startup so the phone never depends on a CDN.
+const XTERM_JS = readAsset('xterm.min.js', path.join('xterm', 'lib', 'xterm.js'));
+const XTERM_FIT_JS = readAsset('xterm-addon-fit.min.js', path.join('xterm-addon-fit', 'lib', 'xterm-addon-fit.js'));
 
 // HTML template with embedded JS
 const HTML_PAGE = `<!DOCTYPE html>
@@ -21,6 +33,15 @@ const HTML_PAGE = `<!DOCTYPE html>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; overflow: hidden; background: #000000; font-family: 'Courier New', monospace; }
+        .xterm { cursor: text; position: relative; user-select: none; -webkit-user-select: none; }
+        .xterm.focus, .xterm:focus { outline: none; }
+        .xterm .xterm-helpers { position: absolute; top: 0; z-index: 5; }
+        .xterm .xterm-helper-textarea { position: absolute; opacity: 0; left: -9999em; top: 0; width: 0; height: 0; z-index: -5; white-space: nowrap; overflow: hidden; resize: none; }
+        .xterm .xterm-char-measure-element { display: inline-block; visibility: hidden; position: absolute; top: 0; left: -9999em; line-height: normal; }
+        .xterm .xterm-viewport { background-color: #000; overflow-y: scroll; cursor: default; position: absolute; inset: 0; }
+        .xterm .xterm-screen { position: relative; }
+        .xterm .xterm-screen canvas { position: absolute; left: 0; top: 0; }
+        .xterm .xterm-scroll-area { visibility: hidden; }
         #terminal { width: 100vw; height: 100vh; font-size: 14px; line-height: 1.2; color: #00ff00; background: #000000; }
         .header { position: fixed; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); color: #00ff00; padding: 8px 12px; font-size: 12px; z-index: 1000; border-bottom: 1px solid #00ff00; display: flex; justify-content: space-between; align-items: center; }
         .header .status { display: flex; gap: 10px; align-items: center; }
@@ -52,7 +73,14 @@ const HTML_PAGE = `<!DOCTYPE html>
         const term = new Terminal({
             cursorBlink: true,
             theme: { background: '#000000', foreground: '#00ff00', cursor: '#00ff00', cursorAccent: '#000000' },
-            fontFamily: 'monospace', fontSize: 14, lineHeight: 1.2, scrollback: 10000, convertLinks: false
+            fontFamily: 'Menlo, Consolas, monospace',
+            // Keep portrait phones in Hermes's simpler branding tier. Wider
+            // Unicode art can drift because browser terminals disagree about
+            // ambiguous-width glyphs.
+            fontSize: window.innerWidth <= 768 ? 11 : 13,
+            lineHeight: 1.1,
+            scrollback: 10000,
+            convertLinks: false
         });
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
@@ -61,11 +89,16 @@ const HTML_PAGE = `<!DOCTYPE html>
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = protocol + '//' + window.location.host + '/ws/hermes-tui/pty?cols=' + term.cols + '&rows=' + term.rows;
         const socket = new WebSocket(wsUrl);
+        socket.binaryType = 'arraybuffer';
         socket.onopen = function() { socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows })); };
         socket.onmessage = function(event) {
             if (event.data instanceof ArrayBuffer) {
                 const decoder = new TextDecoder('utf-8');
                 term.write(decoder.decode(event.data));
+            } else if (event.data instanceof Blob) {
+                event.data.arrayBuffer().then(function(data) {
+                    term.write(new TextDecoder('utf-8').decode(data));
+                });
             } else {
                 term.write(event.data);
             }
@@ -96,16 +129,20 @@ wss.on('connection', (ws, req) => {
     const url = new URL(req.url, 'http://localhost');
     const cols = url.searchParams.get('cols') || 120;
     const rows = url.searchParams.get('rows') || 40;
-    const webttyWs = new WebSocket(`http://127.0.0.1:2346/ws/hermes-tui/pty?cols=${cols}&rows=${rows}`);
+    const webttyWs = new WebSocket(`ws://127.0.0.1:2346/ws/hermes-tui/pty?cols=${cols}&rows=${rows}`);
     webttyWs.on('open', () => {
         ws.on('message', (data) => { webttyWs.send(data); });
-        webttyWs.on('message', (data) => { ws.send(data); });
+        webttyWs.on('message', (data, isBinary) => {
+            // ws represents text frames as Buffer objects. Preserve the frame
+            // type so browsers do not receive terminal text as binary blobs.
+            ws.send(isBinary ? data : data.toString('utf8'), { binary: isBinary });
+        });
         ws.on('close', () => { webttyWs.close(); });
         webttyWs.on('close', () => { ws.close(); });
     });
     webttyWs.on('error', (err) => { ws.close(); });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '127.0.0.1', () => {
     console.log(`Server running on port ${PORT}`);
 });
