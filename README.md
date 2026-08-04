@@ -81,7 +81,9 @@ https://shatner.tail3bf242.ts.net/s/hermes-tui
 
 ## Persistence
 
-Create a scheduled task named `Hermes_Hosted_TUI` that runs `Start-Hermes-HostedTui.ps1` at boot and user logon. The launcher uses `WEBTTY_NO_OPEN=1`, creates the session without eagerly launching Hermes, and starts the frontend only if port 9092 is not already listening.
+Create a scheduled task named `Hermes_Hosted_TUI` that runs `Start-Hermes-HostedTui.ps1` at boot and user logon. Configure it with `IgnoreNew`, no execution time limit, and restart-on-failure. The production task uses 999 one-minute restart attempts.
+
+The script remains alive as a lightweight supervisor and checks loopback ports 2346 and 9092 every 15 seconds. If webtty exits, it recreates the dormant session with `WEBTTY_NO_OPEN=1`; if the xterm.js frontend exits, it restarts that process. Hermes itself still waits for the first browser connection so it receives the client's exact geometry.
 
 ## Verification
 
@@ -100,6 +102,8 @@ curl.exe -I https://shatner.tail3bf242.ts.net/s/hermes-tui
 ```
 
 For mobile acceptance, test a portrait viewport near 390x844. The initial ConPTY width should match the browser (about 61 columns with the default phone font), and no 120-column `hermes-pty.js` process should exist.
+
+For recovery acceptance, stop webtty and the frontend separately. Each listener should return within approximately 15–30 seconds without manually rerunning the task.
 
 ## Security notes
 
