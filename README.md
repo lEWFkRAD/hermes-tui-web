@@ -1,3 +1,12 @@
+<!-- project-home:start -->
+![Hermes TUI Web concept banner](site/hero.png)
+
+**[Hermes TUI Web project homepage](https://lewfkrad.github.io/hermes-tui-web/)** · [Documentation](https://github.com/lEWFkRAD/hermes-tui-web#setup)
+
+Bring the Hermes terminal to a phone-friendly browser over your private network.
+
+<!-- project-home:end -->
+
 # Hermes TUI Web
 
 Host the Hermes TUI as a phone-friendly terminal over a private Tailscale network.
