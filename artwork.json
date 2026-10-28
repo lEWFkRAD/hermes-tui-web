@@ -1,0 +1,8 @@
+{
+  "source": "OpenAI built-in imagegen",
+  "kind": "Concept illustration",
+  "sha256": "37e118bce1155b0d0e38a97ae3900a3c2cbbb02e857f591d1113027e2894af96",
+  "prompts": [
+    "Use case: ads-marketing. Asset: premium public open-source homepage/repository banner, exactly wide 2:1 (2048x1024). Create a beautifully art-directed editorial physical illustration for a phone-friendly browser terminal. Exact prominent title \"Hermes TUI Web\" on the left in crisp, warm ivory display typography, with the small subtitle \"Your terminal, within reach\". On the right, a small upright handset-shaped slab of dark graphite ceramic presents an elegantly minimal terminal symbol: one large pale ivory prompt chevron and a short rectangular cursor. Behind it, a larger smoked-glass terminal window sculpture carries a few precise ivory raised horizontal strokes. A single quiet teal ribbon links the two physical objects, communicating one terminal carried from desktop to phone. Keep the whole artwork clearly conceptual, with no actual software screenshot or implementation claims. Warm charcoal background, desaturated teal details, brushed copper small supports, tactile ceramic and paper, soft side light, graceful layered shadows, architectural composition, generous negative space. All title lettering stays fully visible inside a 10% margin. No IP addresses, hostnames, credentials, conversation text, shell commands, fake code, client data, lock/security badge, browser brands, robots, neon, generic circuitry, network globe, watermark or extra slogans."
+  ]
+}
